@@ -4,6 +4,8 @@ import ast
 import os
 from dotenv import load_dotenv
 
+load_dotenv()
+
 CSV_FILE = "spotify_dataset.csv"
 URI = os.getenv("NEO4J_URI")
 AUTH = (os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASSWORD"))
@@ -69,14 +71,9 @@ def import_data():
     MERGE (a1)-[:FEAT {song: row.song}]->(a2)
     """
 
-    df.to_csv("processed_data.csv", index=False)
-
     with driver.session() as session:
-        chunk_size = 1000
-        for i in range(0, len(batch_data), chunk_size):
-            chunk = batch_data[i:i + chunk_size]
-            session.run(query, batch=chunk)
-            print(f"Processed {i + len(chunk)} / {len(batch_data)}...")
+        session.run(query, batch=batch_data)
+        print(f"Success! Imported all {len(batch_data)} entries.")
 
     driver.close()
     print("Finished.")

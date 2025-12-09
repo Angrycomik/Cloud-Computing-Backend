@@ -71,10 +71,31 @@ def find_connection(request: SearchRequest):
 
 @app.post("/artists", status_code=status.HTTP_201_CREATED)
 def create_artist(artist: ArtistModel):
-    query = "MERGE (:Artist {name: $name})"
+    clean_name = artist.name.strip()
+    
+    if(clean_name == ""):
+        raise HTTPException(status_code=400, detail="Artist name cannot be empty.")
+    
+    check_query = """
+    MATCH (a:Artist)
+    WHERE toLower(a.name) = toLower($name)
+    RETURN a
+    LIMIT 1
+    """
+    
     with driver.session() as session:
-        session.run(query, name=artist.name)
-        return {"message": f"Artist {artist.name} created."}
+        result = session.run(check_query, name=clean_name).single()
+        
+        if result:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Artist '{clean_name}' already exists."
+            )
+        
+        create_query = "CREATE (:Artist {name: $name})"
+        session.run(create_query, name=artist.name)
+        
+        return {"message": f"Artist {clean_name} created."}
 
 @app.post("/songs", status_code=status.HTTP_201_CREATED)
 def add_song_connection(song: SongModel):
