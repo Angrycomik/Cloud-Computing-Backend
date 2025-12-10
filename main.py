@@ -125,7 +125,30 @@ def delete_artist(name: str):
             raise HTTPException(status_code=404, detail="Artist not found")
         
         return {"message": f"Artist {name} deleted."}
+    
+@app.get("/genres")
+def get_genres():
+    query = """
+    MATCH (g:Genre) 
+    WHERE (g)<-[:PLAYS_GENRE]-(:Artist)
+    RETURN g.name AS name 
+    ORDER BY name
+    """
+    with driver.session() as session:
+        result = session.run(query)
+        return [record["name"] for record in result]
 
+@app.get("/genres/{name}")
+def get_artists_by_genre(name: str):
+    query = """
+    MATCH (g:Genre {name: $name})<-[:PLAYS_GENRE]-(a:Artist)
+    RETURN a.name AS artist
+    LIMIT 50
+    """
+    with driver.session() as session:
+        result = session.run(query, name=name)
+        return [record["artist"] for record in result]
+    
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
